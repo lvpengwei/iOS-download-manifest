@@ -16,6 +16,21 @@ def getIPAFileNames():
 	list = [os.path.splitext(file)[0] for file in os.listdir('./ipa') if os.path.splitext(file)[1] == '.ipa']
 	return list
 
+# 按时间顺序的feature set
+def getSortedFeatures():
+	search_dir = "./ipa/"
+	files = os.listdir(search_dir)
+	files = [os.path.join(search_dir, f) for f in files] # add path to each file
+	files.sort(key=lambda x: os.path.getmtime(x))
+	files = [os.path.basename(f) for f in files]
+	files = [os.path.splitext(file)[0] for file in files if os.path.splitext(file)[1] == '.ipa']
+	list = []
+	for filename in files:
+		if filename not in list:
+			list.append(filename.rsplit('-', 1)[0])
+	list.reverse()
+	return list
+
 # 生成对应的plist
 def createPlistFile(filenames):
 	f = open('./template.plist', 'r')
@@ -39,6 +54,27 @@ def createPlistFile(filenames):
 def createHTMLCode(map):
 	code = '<div class="page">\n'
 	for (feature, arr) in map.items():
+		code = code + '\t<div class="box">\n'
+		code = code + '\t\t<h1>' + feature + '</h1>\n'
+		i = 0
+		for scheme in arr:
+			cls = ''
+			if i % 3 == 1:
+				cls = ' class="middle"'
+			elif i % 3 == 2:
+				cls = ' class="last"'
+			i = i + 1
+			filename = feature + '-' + scheme
+			code = code + '\t\t<a href="itms-services://?action=download-manifest&url=' + URLPATH + 'plist/' + filename + '.plist"' + cls + '>' + scheme + ': ' + time.ctime(os.path.getmtime('./ipa/' + filename+ '.ipa')) + '</a>\n'
+		code = code + '\t</div>\n'
+	code = code + '\t</div>'
+	return code
+
+def createHTMLCode(map, sortedKey):
+	code = '<div class="page">\n'
+	for key in sortedKey:
+		feature = key
+		arr = map[key]
 		code = code + '\t<div class="box">\n'
 		code = code + '\t\t<h1>' + feature + '</h1>\n'
 		i = 0
@@ -82,7 +118,7 @@ def main():
 	filenames = getIPAFileNames()
 	createPlistFile(filenames)
 	map = convertToMap(filenames)
-	code = createHTMLCode(map)
+	code = createHTMLCode(map, getSortedFeatures())
 	createHTMLFile(code)
 
 if __name__ == '__main__':
